@@ -24,12 +24,16 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
+resource "random_integer" "suffix" {
+  min = 1000
+  max = 1999
+}
 
 resource "aws_instance" "ec2_cw_agent" {
   ami                    = data.aws_ami.amazon_linux.id
   key_name               = aws_key_pair.ssh_key.key_name
   instance_type          = "t2.micro"
-  subnet_id              = "subnet-48672b46"
+  subnet_id              = data.aws_subnet.selected_subnet.id
   vpc_security_group_ids = [aws_security_group.sg_ssh.id, aws_security_group.sg_web.id]
 
   # User Data to Configure CloudWatch Agent and Generate Logs.
@@ -62,7 +66,7 @@ resource "aws_instance" "ec2_cw_agent" {
 
 
     # Set the region in the CloudWatch Agent configuration file
-    sed -i 's/region = .*/region = ${data.aws_region.current.name}/' /etc/awslogs/awscli.conf
+    sed -i 's/region = .*/region = ${var.aws_region}/' /etc/awslogs/awscli.conf
 
     # Generate Logs Every Minute
     echo "* * * * * root echo '{\"LogType\": \"sample_logs\", \"message\": \"Sample log generated at $(date --iso-8601=seconds)\"} frommm AWS CloudWatch Agent' >> /var/log/sample_logs" >> /etc/cron.d/generate_logs
@@ -117,7 +121,6 @@ resource "aws_instance" "ec2_cw_agent" {
   tags = {
     Name         = "ec2_cw-${random_integer.suffix.result}-apache"
     Terraform    = "yes"
-    Component    = var.Component
     CW_collector = "AWS CloudWatch Agent"
     Apache       = "yes"
     Project      = var.tag_allocation_name_cw_agent
