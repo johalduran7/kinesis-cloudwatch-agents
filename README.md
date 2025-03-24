@@ -1,4 +1,7 @@
+# 🚧🛠️🚧  PROJECT IN PROGRESS 🚧🛠️🚧
+
 # AWS Cost Comparison: EC2 + CloudWatch vs. EC2 + Kinesis Firehose + S3 + Athena + CloudWatch Metrics
+
 
 This project aims to demonstrate and compare the cost implications of two different architectures for data processing and monitoring on AWS:
 
