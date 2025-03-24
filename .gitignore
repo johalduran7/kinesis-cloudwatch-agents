@@ -23,6 +23,7 @@ config.json
 local_doc.txt
 # Whitelist the .gitignore file itself
 !.gitignore
+!README.md
 
 # Optional: Whitelist directories (to allow file inclusion in them)
 !*/
