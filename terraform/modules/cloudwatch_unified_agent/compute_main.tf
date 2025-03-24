@@ -1,62 +1,33 @@
-
-# IAM Policy for Logging Permissions
-#note: "ec2:DescribeTags" this one is needed for CW Agent to run
-resource "aws_iam_policy" "cloudwatch_log_policy_agent" {
-  name = "cloudwatch-log-policy-agent"
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:DescribeLogStreams",
-          "logs:DescribeLogGroups",
-          "logs:PutLogEvents",
-          "ec2:DescribeTags",
-          "cloudwatch:PutMetricData"
-        ],
-        Effect   = "Allow",
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# Attach IAM Policy to Role
-resource "aws_iam_role_policy_attachment" "attach_policy_cw_sagent" {
-  role       = aws_iam_role.ec2_cloudwatch_role.name
-  policy_arn = aws_iam_policy.cloudwatch_log_policy_agent.arn
-}
-
-resource "aws_security_group" "sg_web" {
-  name        = "sg_web"
-  description = "allow 80"
-  tags = {
-    Terraform = "yes"
-    aws_saa   = "yes"
-  }
-}
-
-resource "aws_security_group_rule" "sg_web" {
-  type              = "ingress"
-  to_port           = "80"
-  from_port         = "80"
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.sg_web.id
-}
-
-
 # EC2 Instance  -- Exporting files to CW using AWS CW Unified. Unified Agent: If the version is 1.247.0.0 or newer, you have the Unified Agent.
 # The Agent legacy version works the same way, same commands.
 # this instance adds logs to the same loggroup as the logs_daemon, this is just to test both types of cloudwatch producers. 
 
+# Create the SSH pair key: ssh-keygen -t rsa -b 4096 -f key_saa -N ""
+resource "aws_key_pair" "ssh_key" {
+  key_name   = "ssh-key"
+  public_key = file("ssh_key.pub")
+}
+
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"] # Amazon's official AMI owner ID
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-2023.6.20250128.0-kernel-6.1-x86_64"] # Amazon Linux 2 AMI
+    #values = ["Amazon Linux 2023 AMI"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 
 resource "aws_instance" "ec2_cw_agent" {
   ami                    = data.aws_ami.amazon_linux.id
-  key_name               = aws_key_pair.deployer.key_name
+  key_name               = aws_key_pair.ssh_key.key_name
   instance_type          = "t2.micro"
   subnet_id              = "subnet-48672b46"
   vpc_security_group_ids = [aws_security_group.sg_ssh.id, aws_security_group.sg_web.id]
@@ -141,18 +112,14 @@ resource "aws_instance" "ec2_cw_agent" {
     
   EOF
 
-  iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
+  iam_instance_profile = aws_iam_instance_profile.ec2_cw_instance_profile.name
 
   tags = {
     Name         = "ec2_cw-${random_integer.suffix.result}-apache"
     Terraform    = "yes"
-    aws_dva_c02  = "yes"
     Component    = var.Component
     CW_collector = "AWS CloudWatch Agent"
     Apache       = "yes"
+    Project      = var.tag_allocation_name_cw_agent
   }
-}
-
-output "public_ip_ec2_apache" {
-  value = aws_instance.ec2_cw_agent.public_ip
 }
