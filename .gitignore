@@ -1,0 +1,29 @@
+# Ignore everything by default
+*
+*.md
+*.deb
+*key_*
+*.pemsss
+
+# Whitelist specific file types
+!*.tf
+!*.py
+!*.yaml
+!*.yml
+!*.zip
+!*.html
+!*.txt
+!*.sh
+!Dockerfile
+!.gitkeep
+!*.js
+!*.json
+!Jenkinsfile
+config.json
+local_doc.txt
+# Whitelist the .gitignore file itself
+!.gitignore
+
+# Optional: Whitelist directories (to allow file inclusion in them)
+!*/
+.terraform/
