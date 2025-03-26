@@ -15,7 +15,7 @@ resource "aws_security_group" "sg_web" {
   description = "allow 80"
   tags = {
     Terraform = "yes"
-    Project      = var.tag_allocation_name_cw_agent
+    Project   = var.tag_allocation_name_cw_agent
   }
 }
 
@@ -38,7 +38,7 @@ resource "aws_security_group" "sg_ssh" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  vpc_id = "${var.vpc_id}"
+  vpc_id = var.vpc_id
 
   egress {
     from_port   = 0

@@ -1,13 +1,13 @@
 variable "aws_region" {
-  default     = ""
+  default = ""
 }
 
 variable "vpc_id" {
-  default     = ""
+  default = ""
 }
 
 variable "tag_allocation_name_cw_agent" {
-  default     = "CloudWatch_Agent"
+  default = "CloudWatch_Agent"
 }
 
 variable "Component" {

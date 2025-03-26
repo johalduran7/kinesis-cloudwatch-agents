@@ -1,8 +1,8 @@
 resource "aws_s3_bucket" "log_bucket" {
   bucket = var.s3_bucket_name
   tags = {
-    Terraform        = "yes"
-    Project = var.tag_allocation_name_cw_agent
+    Terraform = "yes"
+    Project   = var.tag_allocation_name_cw_agent
   }
 }
 
@@ -20,8 +20,8 @@ resource "aws_glue_crawler" "log_crawler" {
     path = "s3://${aws_s3_bucket.log_bucket.id}/"
   }
   tags = {
-    Terraform        = "yes"
-    Project = var.tag_allocation_name_cw_agent
+    Terraform = "yes"
+    Project   = var.tag_allocation_name_cw_agent
   }
 }
 

@@ -1,13 +1,13 @@
 variable "aws_region" {
-  default     = ""
+  default = ""
 }
 
 variable "vpc_id" {
-  default     = ""
+  default = ""
 }
 
 variable "tag_allocation_name_cw_agent" {
-  default     = ""
+  default = ""
 }
 
 variable "Component" {
@@ -15,6 +15,6 @@ variable "Component" {
   default = "ec2_kinesis"
 }
 
-variable s3_bucket_name {
-  default     = "ec2_kinesis_log"
+variable "s3_bucket_name" {
+  default = "ec2_kinesis_log"
 }

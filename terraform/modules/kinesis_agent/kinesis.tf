@@ -10,7 +10,7 @@ resource "aws_kinesis_firehose_delivery_stream" "kinesis_firehose" {
   }
 
   tags = {
-    Terraform        = "yes"
-    Project = var.tag_allocation_name_cw_agent
+    Terraform = "yes"
+    Project   = var.tag_allocation_name_cw_agent
   }
 }
