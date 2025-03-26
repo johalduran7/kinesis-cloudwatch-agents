@@ -1,6 +1,4 @@
-# EC2 Instance  -- Exporting files to CW using AWS CW Unified. Unified Agent: If the version is 1.247.0.0 or newer, you have the Unified Agent.
-# The Agent legacy version works the same way, same commands.
-# this instance adds logs to the same loggroup as the logs_daemon, this is just to test both types of cloudwatch producers. 
+# EC2 instance that hosts both Kinesis Agent and CoudWatch Agent
 
 # Create the SSH pair key: ssh-keygen -t rsa -b 4096 -f key_saa -N ""
 resource "aws_key_pair" "ssh_key" {
@@ -29,7 +27,7 @@ resource "random_integer" "suffix" {
   max = 1999
 }
 
-resource "aws_instance" "ec2_cw_agent" {
+resource "aws_instance" "ec2_kinesis_agent" {
   ami                    = data.aws_ami.amazon_linux.id
   key_name               = aws_key_pair.ssh_key.key_name
   instance_type          = "t2.micro"
@@ -119,7 +117,7 @@ resource "aws_instance" "ec2_cw_agent" {
   iam_instance_profile = aws_iam_instance_profile.ec2_cw_instance_profile.name
 
   tags = {
-    Name         = "ec2_cw-${random_integer.suffix.result}-apache"
+    Name         = "${var.Component}-${random_integer.suffix.result}-apache"
     Terraform    = "yes"
     CW_collector = "AWS CloudWatch Agent"
     Apache       = "yes"

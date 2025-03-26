@@ -13,3 +13,7 @@ variable "tag_allocation_name_cw_agent" {
 variable "tag_allocation_name_kinesis_agent" {
   default     = "Kinesis_Agent"
 }
+
+variable s3_bucket_name {
+  default     = "ec2_kinesis_log"
+}

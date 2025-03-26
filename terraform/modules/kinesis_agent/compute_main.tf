@@ -111,10 +111,10 @@ resource "aws_instance" "ec2_cw_agent" {
     
   EOF
 
-  iam_instance_profile = aws_iam_instance_profile.ec2_cw_instance_profile.name
+  iam_instance_profile = aws_iam_instance_profile.ec2_kinesis_instance_profile.name
 
   tags = {
-    Name         = "ec2_cw-${random_integer.suffix.result}-apache"
+    Name         = "${var.Component}-${random_integer.suffix.result}-apache"
     Terraform    = "yes"
     CW_collector = "AWS CloudWatch Agent"
     Apache       = "yes"
