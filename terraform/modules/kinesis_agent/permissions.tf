@@ -125,12 +125,13 @@ resource "aws_iam_policy" "firehose_s3_policy" {
       "Effect": "Allow",
       "Action": [
         "s3:PutObject",
+        "s3:PutObjectAcl",
         "s3:GetObject",
         "s3:ListBucket"
       ],
       "Resource": [
-        "arn:aws:s3:::${var.s3_bucket_name}",
-        "arn:aws:s3:::${var.s3_bucket_name}/*"
+        "${aws_s3_bucket.log_bucket.arn}",
+        "${aws_s3_bucket.log_bucket.arn}/*"
       ]
     }
   ]
@@ -142,3 +143,60 @@ resource "aws_iam_role_policy_attachment" "firehose_s3_attach" {
   role       = aws_iam_role.firehose_role.name
   policy_arn = aws_iam_policy.firehose_s3_policy.arn
 }
+
+resource "aws_iam_policy" "firehose_cloudwatch_policy" {
+  name        = "FirehoseCloudWatchPolicy"
+  description = "Policy to allow Firehose to write logs to CloudWatch"
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams",
+        "logs:DescribeLogGroups",
+        "logs:CreateLogStream",
+        "logs:CreateLogGroup"
+      ],
+      "Resource": "${aws_kinesis_firehose_delivery_stream.kinesis_firehose.arn}"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "firehose_cloudwatch_attach" {
+  role       = aws_iam_role.firehose_role.name
+  policy_arn = aws_iam_policy.firehose_cloudwatch_policy.arn
+}
+
+
+# S3 Bucket policy to allow Firehose to send events to the bucket:
+resource "aws_s3_bucket_policy" "firehose_s3_policy" {
+  bucket = aws_s3_bucket.log_bucket.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = { "Service": "firehose.amazonaws.com" }
+        Action = "s3:PutObject"
+        Resource = "${aws_s3_bucket.log_bucket.arn}/*"
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = "${data.aws_caller_identity.current.account_id}"
+          }
+          ArnLike = {
+            "aws:SourceArn" = "${aws_kinesis_firehose_delivery_stream.kinesis_firehose.arn}"
+          }
+        }
+      }
+    ]
+  })
+}
+
+data "aws_caller_identity" "current" {}

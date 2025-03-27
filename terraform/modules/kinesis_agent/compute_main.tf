@@ -8,7 +8,7 @@ data "aws_ami" "amazon_linux" {
   owners      = ["amazon"] # Amazon's official AMI owner ID
 
   filter {
-    name   = "name"
+    name = "name"
     #values = ["al2023-ami-2023.6.20250128.0-kernel-6.1-x86_64"] # Amazon Linux 3 AMI
     values = ["amzn2-ami-hvm-*-x86_64-gp2"] # Amazon Linux 2 AMI
   }
@@ -72,7 +72,7 @@ resource "aws_instance" "ec2_kinesis_agent" {
     sed -i 's/region = .*/region = ${var.aws_region}/' /etc/awslogs/awscli.conf
 
     # Generate Logs Every Minute
-    echo "* * * * * root echo '{\"LogType\": \"sample_logs\", \"message\": \"Sample log generated at $(TZ="America/Bogota" date --iso-8601=seconds)\"} frommm AWS CloudWatch Agent' >> /var/log/sample_logs" >> /etc/cron.d/generate_logs
+    echo "* * * * * root echo '{\"LogType\": \"sample_logs\", \"message\": \"Sample log generated at $(TZ="America/Bogota" date --iso-8601=seconds)\"}' >> /var/log/sample_logs" >> /etc/cron.d/generate_logs
     chmod 0644 /etc/cron.d/generate_logs
 
     # Start CloudWatch Agent
@@ -88,15 +88,7 @@ resource "aws_instance" "ec2_kinesis_agent" {
         "firehose.endpoint": "https://firehose.${var.aws_region}.amazonaws.com",
         "flows": [
             {
-                "filePattern": "/var/log/messages",
-                "deliveryStream": "${var.firehose_name}"
-            },
-            {
                 "filePattern": "/var/log/sample_logs",
-                "deliveryStream": "${var.firehose_name}"
-            },
-            {
-                "filePattern": "/var/log/httpd/access_log",
                 "deliveryStream": "${var.firehose_name}"
             }
         ]
@@ -122,3 +114,27 @@ resource "aws_instance" "ec2_kinesis_agent" {
     Project      = var.tag_allocation_name_kinesis_agent
   }
 }
+
+
+
+    # cat <<EOT > /etc/aws-kinesis/agent.json
+    # {
+    #     "cloudwatch.emitMetrics": true,
+    #     "kinesis.endpoint": "https://kinesis.${var.aws_region}.amazonaws.com",
+    #     "firehose.endpoint": "https://firehose.${var.aws_region}.amazonaws.com",
+    #     "flows": [
+    #         {
+    #             "filePattern": "/var/log/messages",
+    #             "deliveryStream": "${var.firehose_name}"
+    #         },
+    #         {
+    #             "filePattern": "/var/log/sample_logs",
+    #             "deliveryStream": "${var.firehose_name}"
+    #         },
+    #         {
+    #             "filePattern": "/var/log/httpd/access_log",
+    #             "deliveryStream": "${var.firehose_name}"
+    #         }
+    #     ]
+    # }
+    # EOT

@@ -18,6 +18,6 @@ variable "s3_bucket_name" {
   default = "ec2-kinesis-log"
 }
 
-variable firehose_name {
-  default     = "ec2-logs-stream"
+variable "firehose_name" {
+  default = "ec2-logs-stream"
 }

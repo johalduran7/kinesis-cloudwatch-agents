@@ -10,7 +10,7 @@ data "aws_ami" "amazon_linux" {
   owners      = ["amazon"] # Amazon's official AMI owner ID
 
   filter {
-    name   = "name"
+    name = "name"
     #values = ["al2023-ami-2023.6.20250128.0-kernel-6.1-x86_64"] # Amazon Linux 3 AMI
     values = ["amzn2-ami-hvm-*-x86_64-gp2"] # Amazon Linux 2 AMI
 

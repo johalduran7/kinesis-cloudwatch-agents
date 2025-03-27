@@ -16,5 +16,5 @@ module "kinesis_agent" {
   tag_allocation_name_kinesis_agent = var.tag_allocation_name_kinesis_agent
   vpc_id                            = var.vpc_id
   s3_bucket_name                    = var.s3_bucket_name
-  firehose_name = var.firehose_name
+  firehose_name                     = var.firehose_name
 }
