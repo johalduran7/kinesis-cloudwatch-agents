@@ -15,5 +15,9 @@ variable "tag_allocation_name_kinesis_agent" {
 }
 
 variable "s3_bucket_name" {
-  default = "ec2_kinesis_log"
+  default = "ec2-kinesis-log"
+}
+
+variable firehose_name {
+  default     = "ec2-logs-stream"
 }

@@ -9,8 +9,8 @@ data "aws_ami" "amazon_linux" {
 
   filter {
     name   = "name"
-    values = ["al2023-ami-2023.6.20250128.0-kernel-6.1-x86_64"] # Amazon Linux 2 AMI
-    #values = ["Amazon Linux 2023 AMI"]
+    #values = ["al2023-ami-2023.6.20250128.0-kernel-6.1-x86_64"] # Amazon Linux 3 AMI
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"] # Amazon Linux 2 AMI
   }
 
   filter {
@@ -78,45 +78,37 @@ resource "aws_instance" "ec2_kinesis_agent" {
     # Start CloudWatch Agent
     #  /var/log/messages" is not used anymore because Amazon Linux 2023 uses journal to collect logs. The logs are stored in binary files so they are scrape differently
     # Create CloudWatch Agent Configuration File in the correct directory
-    cat <<EOT > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-    {
-        "agent":{
-            "run_as_user":"root"
-        },
-        "logs": {
-            "logs_collected": {
-                "files": {
-                    "collect_list": [
-                        {
-                            "file_path": "/var/log/messages",
-                            "log_group_name": "${aws_cloudwatch_log_group.ec2_log_group.name}",
-                            "log_stream_name": "${aws_cloudwatch_log_stream.ec2_log_stream.name}",
-                            "timestamp_format": "%b %d %H:%M:%S.%f"
-                        },
-                        {
-                            "file_path": "/var/log/sample_logs",
-                            "log_group_name": "${aws_cloudwatch_log_group.ec2_log_group.name}",
-                            "log_stream_name": "${aws_cloudwatch_log_stream.ec2_log_stream.name}",
-                            "timestamp_format": "%b %d %H:%M:%S.%f"
-                        },
-                        {
-                            "file_path": "/var/log/httpd/access_log",
-                            "log_group_name": "${aws_cloudwatch_log_group.ec2_log_group.name}",
-                            "log_stream_name": "${aws_cloudwatch_log_stream.ec2_log_stream.name}",
-                            "timestamp_format": "%b %d %H:%M:%S.%f"
-                        }                
-                    ]
-                }
-            }
-        }
-    }
 
+    yum install -y aws-kinesis-agent
+    systemctl enable aws-kinesis-agent
+    cat <<EOT > /etc/aws-kinesis/agent.json
+    {
+        "cloudwatch.emitMetrics": true,
+        "kinesis.endpoint": "https://kinesis.${var.aws_region}.amazonaws.com",
+        "firehose.endpoint": "https://firehose.${var.aws_region}.amazonaws.com",
+        "flows": [
+            {
+                "filePattern": "/var/log/messages",
+                "deliveryStream": "${var.firehose_name}"
+            },
+            {
+                "filePattern": "/var/log/sample_logs",
+                "deliveryStream": "${var.firehose_name}"
+            },
+            {
+                "filePattern": "/var/log/httpd/access_log",
+                "deliveryStream": "${var.firehose_name}"
+            }
+        ]
+    }
     EOT
 
-    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+    sudo setfacl -m u:aws-kinesis-agent-user:r /var/log/messages
+    sudo setfacl -m u:aws-kinesis-agent-user:r /var/log/sample_logs
+    sudo setfacl -m u:aws-kinesis-agent-user:r /var/log/httpd/access_log
 
-    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a start -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
-    
+    systemctl restart aws-kinesis-agent
+
   EOF
 
 

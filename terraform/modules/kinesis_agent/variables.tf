@@ -18,3 +18,7 @@ variable "Component" {
 variable "s3_bucket_name" {
   default = "ec2_kinesis_log"
 }
+
+variable firehose_name {
+  default     = "ec2-logs-stream"
+}
