@@ -1,4 +1,3 @@
-# EC2 instance that hosts both Kinesis Agent and CoudWatch Agent
 
 # Create the SSH pair key: ssh-keygen -t rsa -b 4096 -f key_saa -N ""
 resource "aws_key_pair" "ssh_key" {
@@ -12,7 +11,9 @@ data "aws_ami" "amazon_linux" {
 
   filter {
     name   = "name"
-    values = ["al2023-ami-2023.6.20250128.0-kernel-6.1-x86_64"] # Amazon Linux 2 AMI
+    #values = ["al2023-ami-2023.6.20250128.0-kernel-6.1-x86_64"] # Amazon Linux 3 AMI
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"] # Amazon Linux 2 AMI
+
     #values = ["Amazon Linux 2023 AMI"]
   }
 
@@ -27,7 +28,7 @@ resource "random_integer" "suffix" {
   max = 1999
 }
 
-resource "aws_instance" "ec2_kinesis_agent" {
+resource "aws_instance" "ec2_cw_agent" {
   ami                    = data.aws_ami.amazon_linux.id
   key_name               = aws_key_pair.ssh_key.key_name
   instance_type          = "t2.micro"
@@ -41,11 +42,18 @@ resource "aws_instance" "ec2_kinesis_agent" {
     yum update -y
     yum install -y amazon-cloudwatch-agent
 
-    yum install -y amazon-cloudwatch-agent httpd
+    #installing cron on Amazon Linux 3
+    #yum install -y cronie
+    #systemctl start crond
+
+
+    yum install -y httpd
     # Start Apache Server
     systemctl start httpd
     systemctl enable httpd
-    echo "Hello World from Apache running on $(curl http://169.254.169.254/latest/meta-data/instance-id) " > /var/www/html/index.html
+    TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+    INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" "http://169.254.169.254/latest/meta-data/instance-id")
+    echo "Hello World from Apache running on $INSTANCE_ID " > /var/www/html/index.html
 
     # Configure Apache to log in JSON format
 
@@ -67,11 +75,11 @@ resource "aws_instance" "ec2_kinesis_agent" {
     sed -i 's/region = .*/region = ${var.aws_region}/' /etc/awslogs/awscli.conf
 
     # Generate Logs Every Minute
-    echo "* * * * * root echo '{\"LogType\": \"sample_logs\", \"message\": \"Sample log generated at $(date --iso-8601=seconds)\"} frommm AWS CloudWatch Agent' >> /var/log/sample_logs" >> /etc/cron.d/generate_logs
+    echo "* * * * * root echo '{\"LogType\": \"sample_logs\", \"message\": \"Sample log generated at $(TZ="America/Bogota" date --iso-8601=seconds)\"} frommm AWS CloudWatch Agent' >> /var/log/sample_logs" >> /etc/cron.d/generate_logs
     chmod 0644 /etc/cron.d/generate_logs
 
     # Start CloudWatch Agent
-
+    #  /var/log/messages" is not used anymore because Amazon Linux 2023 uses journal to collect logs. The logs are stored in binary files so they are scrape differently
     # Create CloudWatch Agent Configuration File in the correct directory
     cat <<EOT > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
     {
@@ -80,28 +88,28 @@ resource "aws_instance" "ec2_kinesis_agent" {
         },
         "logs": {
             "logs_collected": {
-            "files": {
-                "collect_list": [
-                {
-                    "file_path": "/var/log/messages",
-                    "log_group_name": "${aws_cloudwatch_log_group.ec2_log_group.name}",
-                    "log_stream_name": "${aws_cloudwatch_log_stream.ec2_log_stream.name}",
-                    "timestamp_format": "%b %d %H:%M:%S.%f"
-                },
-                {
-                    "file_path": "/var/log/sample_logs",
-                    "log_group_name": "${aws_cloudwatch_log_group.ec2_log_group.name}",
-                    "log_stream_name": "${aws_cloudwatch_log_stream.ec2_log_stream.name}",
-                    "timestamp_format": "%b %d %H:%M:%S.%f"
-                },
-                {
-                    "file_path": "/var/log/httpd/access_log",
-                    "log_group_name": "${aws_cloudwatch_log_group.ec2_log_group.name}",
-                    "log_stream_name": "${aws_cloudwatch_log_stream.ec2_log_stream.name}",
-                    "timestamp_format": "%b %d %H:%M:%S.%f"
-                }                
-                ]
-            }
+                "files": {
+                    "collect_list": [
+                        {
+                            "file_path": "/var/log/messages",
+                            "log_group_name": "${aws_cloudwatch_log_group.ec2_log_group.name}",
+                            "log_stream_name": "${aws_cloudwatch_log_stream.ec2_log_stream.name}",
+                            "timestamp_format": "%b %d %H:%M:%S.%f"
+                        },
+                        {
+                            "file_path": "/var/log/sample_logs",
+                            "log_group_name": "${aws_cloudwatch_log_group.ec2_log_group.name}",
+                            "log_stream_name": "${aws_cloudwatch_log_stream.ec2_log_stream.name}",
+                            "timestamp_format": "%b %d %H:%M:%S.%f"
+                        },
+                        {
+                            "file_path": "/var/log/httpd/access_log",
+                            "log_group_name": "${aws_cloudwatch_log_group.ec2_log_group.name}",
+                            "log_stream_name": "${aws_cloudwatch_log_stream.ec2_log_stream.name}",
+                            "timestamp_format": "%b %d %H:%M:%S.%f"
+                        }                
+                    ]
+                }
             }
         }
     }

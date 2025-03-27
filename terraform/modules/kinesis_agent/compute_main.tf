@@ -24,7 +24,8 @@ resource "random_integer" "suffix" {
   max = 1999
 }
 
-resource "aws_instance" "ec2_cw_agent" {
+
+resource "aws_instance" "ec2_kinesis_agent" {
   ami                    = data.aws_ami.amazon_linux.id
   key_name               = aws_key_pair.ssh_key.key_name
   instance_type          = "t2.micro"
