@@ -6,7 +6,7 @@ variable "vpc_id" {
   default = ""
 }
 
-variable "tag_allocation_name_cw_agent" {
+variable "tag_allocation_name_kinesis_agent" {
   default = ""
 }
 

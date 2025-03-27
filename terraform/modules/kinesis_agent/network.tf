@@ -15,7 +15,7 @@ resource "aws_security_group" "sg_web" {
   description = "allow 80"
   tags = {
     Terraform = "yes"
-    Project   = var.tag_allocation_name_cw_agent
+    Project   = var.tag_allocation_name_kinesis_agent
   }
 }
 

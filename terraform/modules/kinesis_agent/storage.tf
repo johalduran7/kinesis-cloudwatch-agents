@@ -2,7 +2,7 @@ resource "aws_s3_bucket" "log_bucket" {
   bucket = var.s3_bucket_name
   tags = {
     Terraform = "yes"
-    Project   = var.tag_allocation_name_cw_agent
+    Project   = var.tag_allocation_name_kinesis_agent
   }
 }
 
@@ -21,7 +21,7 @@ resource "aws_glue_crawler" "log_crawler" {
   }
   tags = {
     Terraform = "yes"
-    Project   = var.tag_allocation_name_cw_agent
+    Project   = var.tag_allocation_name_kinesis_agent
   }
 }
 
