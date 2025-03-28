@@ -12,36 +12,58 @@ resource "aws_s3_bucket" "log_bucket" {
 #   acl    = "private"
 # }
 
-
-# resource "aws_glue_crawler" "log_crawler" {
-#   name          = "ec2-log-crawler"
-#   role          = aws_iam_role.ec2_role.arn
-#   database_name = "log_db"
-#   s3_target {
-#     path = "s3://${aws_s3_bucket.log_bucket.id}/"
-#   }
-#   tags = {
-#     Terraform = "yes"
-#     Project   = var.tag_allocation_name_kinesis_agent
-#   }
-# }
-
 resource "aws_athena_database" "athena_db" {
   name   = "log_analysis_db"
   bucket = aws_s3_bucket.log_bucket.id
+  force_destroy=true
 }
 
-resource "aws_athena_named_query" "create_table" {
-  name        = "create_log_table"
-  database    = aws_athena_database.athena_db.name
-  description = "Create table for Firehose logs"
-  query       = <<EOF
-CREATE EXTERNAL TABLE IF NOT EXISTS log_analysis_db.firehose_logs (
-  LogType STRING,
-  message STRING
-)
-ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
-LOCATION 's3://${aws_s3_bucket.log_bucket.id}/'
-TBLPROPERTIES ('has_encrypted_data'='false');
-EOF
+resource "aws_glue_crawler" "log_crawler" {
+  name          = "ec2-log-crawler"
+  role          = aws_iam_role.glue_crawler_role.arn
+  database_name = aws_athena_database.athena_db.name
+  s3_target {
+    path = "s3://${aws_s3_bucket.log_bucket.id}/"
+    exclusions = [
+      "athena-results/*"  # Exclude the Athena results folder
+    ]
+  }
+  schedule = "cron(0 * * * ? *)" # Runs hourly at the 0th minute. this is because firehose separate it per hour
+  tags = {
+    Terraform = "yes"
+    Project   = var.tag_allocation_name_kinesis_agent
+  }
 }
+
+
+resource "aws_athena_workgroup" "log_analysis_workgroup" {
+  name = "log_analysis_workgroup"
+  configuration {
+    enforce_workgroup_configuration    = true
+    publish_cloudwatch_metrics_enabled = true
+    requester_pays_enabled             = false
+    result_configuration {
+      output_location = "s3://${aws_s3_bucket.log_bucket.id}/athena-results/"
+    }
+  }
+}
+
+# resource "aws_athena_named_query" "log_query" {
+#   name          = "LogQuery"
+#   database      = aws_athena_database.log_analysis_db.name
+#   workgroup     = aws_athena_workgroup.log_analysis_workgroup.name
+#   query_string  = <<EOT
+#     CREATE EXTERNAL TABLE IF NOT EXISTS log_analysis_db.sample_logs (
+#       logtype STRING,
+#       timestamp STRING,
+#       message STRING
+#     )
+#     ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
+#     LOCATION 's3://${aws_s3_bucket.log_bucket.id}/logs/'
+#     TBLPROPERTIES ('has_encrypted_data'='false');
+#   EOT
+# }
+
+
+
+

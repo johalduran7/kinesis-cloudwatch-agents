@@ -72,8 +72,8 @@ resource "aws_instance" "ec2_kinesis_agent" {
     sed -i 's/region = .*/region = ${var.aws_region}/' /etc/awslogs/awscli.conf
 
     # Generate Logs Every Minute
-    echo "* * * * * root echo '{\"LogType\": \"sample_logs\", \"message\": \"Sample log generated at $(TZ="America/Bogota" date --iso-8601=seconds)\"}' >> /var/log/sample_logs" >> /etc/cron.d/generate_logs
-    chmod 0644 /etc/cron.d/generate_logs
+    echo '* * * * * root echo "{\"LogType\": \"sample_logs\", \"timestamp\": \"$(TZ='America/Bogota' date --iso-8601=seconds)\", \"message\": \"Sample log generated\"}" >> /var/log/sample_logs' >> /etc/cron.d/generate_logs
+
 
     # Start CloudWatch Agent
     #  /var/log/messages" is not used anymore because Amazon Linux 2023 uses journal to collect logs. The logs are stored in binary files so they are scrape differently
@@ -84,15 +84,68 @@ resource "aws_instance" "ec2_kinesis_agent" {
     cat <<EOT > /etc/aws-kinesis/agent.json
     {
         "cloudwatch.emitMetrics": true,
-        "kinesis.endpoint": "https://kinesis.${var.aws_region}.amazonaws.com",
         "firehose.endpoint": "https://firehose.${var.aws_region}.amazonaws.com",
         "flows": [
             {
                 "filePattern": "/var/log/sample_logs",
-                "deliveryStream": "${var.firehose_name}"
+                "deliveryStream": "${var.firehose_name}",
+                "dataProcessingOptions": [
+                    {
+                        "optionName": "LOGTOJSON",
+                        "logFormat": "JSON",
+                        "recordFormat": {
+                            "jsonMapping": {
+                                "log_type": "$.LogType",
+                                "timestamp": "$.timestamp",
+                                "message": "$.message"
+                            }
+                        }
+                    }
+                ]
+            },
+            {
+                "filePattern": "/var/log/httpd/access_log",
+                "deliveryStream": "${var.firehose_name}",
+                "dataProcessingOptions": [
+                    {
+                        "optionName": "LOGTOJSON",
+                        "logFormat": "JSON",
+                        "recordFormat": {
+                            "jsonMapping": {
+                                "log_type": "$.LogType",
+                                "timestamp": "$.time",
+                                "remote_ip": "$.remote_ip",
+                                "url": "$.url",
+                                "method": "$.method",
+                                "status": "$.status",
+                                "bytes_sent": "$.bytes_sent",
+                                "user_agent": "$.user_agent"
+                            }
+                        }
+                    }
+                ]
+            },
+            {
+                "filePattern": "/var/log/messages",
+                "deliveryStream": "${var.firehose_name}",
+                "dataProcessingOptions": [
+                    {
+                        "optionName": "LOGTOJSON",
+                        "logFormat": "SYSLOG",
+                        "recordFormat": {
+                            "jsonMapping": {
+                                "timestamp": "$.timestamp",
+                                "hostname": "$.hostname",
+                                "process": "$.program",
+                                "message": "$.message"
+                            }
+                        }
+                    }
+                ]
             }
         ]
     }
+
     EOT
 
     sudo setfacl -m u:aws-kinesis-agent-user:r /var/log/messages
@@ -100,6 +153,7 @@ resource "aws_instance" "ec2_kinesis_agent" {
     sudo setfacl -m u:aws-kinesis-agent-user:r /var/log/httpd/access_log
 
     systemctl restart aws-kinesis-agent
+    #systemctl stop aws-kinesis-agent
 
   EOF
 

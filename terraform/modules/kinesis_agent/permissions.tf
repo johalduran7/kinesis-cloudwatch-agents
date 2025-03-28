@@ -200,3 +200,53 @@ resource "aws_s3_bucket_policy" "firehose_s3_policy" {
 }
 
 data "aws_caller_identity" "current" {}
+
+
+# Glue crawler policy
+resource "aws_iam_role" "glue_crawler_role" {
+  name = "AWSGlueServiceRole-ec2-kinesis"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = "sts:AssumeRole",
+        Effect = "Allow",
+        Principal = {
+          Service = "glue.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "ec2_kinesis_s3_policy" {
+  name        = "AWSGlueServiceRole-ec2-kinesis-EZCRC-s3Policy"
+  description = "Policy for ec2 kinesis s3 access"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject"
+        ],
+        Resource = [
+          "${aws_s3_bucket.log_bucket.arn}",
+          "${aws_s3_bucket.log_bucket.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "glue_crawler_policy_attachment" {
+  role       = aws_iam_role.glue_crawler_role.name
+  policy_arn = aws_iam_policy.ec2_kinesis_s3_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "glue_service_role_attachment" {
+  role       = aws_iam_role.glue_crawler_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+}
